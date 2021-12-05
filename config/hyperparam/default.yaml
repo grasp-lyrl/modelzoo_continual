@@ -1,0 +1,6 @@
+# Hyper-parmeters obtained from Ray-tune script
+model: "wrn16_4"
+batch: 16
+lr: 0.01
+l2_reg: 0.00001
+dropout: 0.2
