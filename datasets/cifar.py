@@ -107,7 +107,7 @@ class Cifar100Handler(CifarHandler):
               of data points chosen is through the np.roll function
         """
 
-        train_transform, test_transform = self.get_trasforms(args.epochs)
+        train_transform, test_transform = self.get_transforms(args.epochs)
         self.trainset = torchvision.datasets.CIFAR100(
             root='./data', train=True, download=True,
             transform=train_transform)

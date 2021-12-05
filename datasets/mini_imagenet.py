@@ -64,7 +64,7 @@ class MiniImagenetHandler(MultiTaskDataHandler):
         cat = lambda x, y: np.concatenate((x, y), axis=0)
 
         # Split dataset into multiple tasks
-        for task_id, task in tasks:
+        for task_id, task in enumerate(tasks):
             current_train, current_test = None, None
             for label in task:
                 class_indices = np.argwhere(all_label == label).reshape(-1)
@@ -104,7 +104,7 @@ class MiniImagenetHandler(MultiTaskDataHandler):
 
         # Change labels to have label and task-id
         train_labels, test_labels = [], []
-        train_data, test_data = []
+        train_data, test_data = [], []
 
         tmap = {}
         for task in tasks:
@@ -118,7 +118,7 @@ class MiniImagenetHandler(MultiTaskDataHandler):
             train_labels.append(lab)
 
         for task_id, task_data in enumerate(test_ds):
-            dataset, lab = task
+            dataset, lab = task_data
             test_data.append(torch.Tensor(dataset))
             lab = [(task_id, tmap[li]) for li in lab]
             test_labels.append(lab)

@@ -44,7 +44,7 @@ class MultiHead():
 
         # Get dataset
         dataclass = fetch_dataclass(data_conf['dataset'])
-        dataset = dataclass(data_conf['tasks'], args.samples, seed=args.seed)
+        dataset = dataclass(args, data_conf['tasks'])
         self.train_loader = dataset.get_data_loader(hp["batch"], 4, train=True)
 
         test_loaders = []
