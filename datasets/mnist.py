@@ -79,7 +79,8 @@ class SplitMNISTHandler(MNISTHandler):
     """
     def __init__(self,
                  args,
-                 tasks: List[List[int]]) -> None:
+                 tasks: List[List[int]],
+                 download: bool = False) -> None:
         """
         Download dataset and define transforms
         Args:
@@ -89,10 +90,10 @@ class SplitMNISTHandler(MNISTHandler):
 
         train_transform, test_transform = self.get_trasforms(args.epochs)
         self.trainset = ModMNIST(
-            root='./data', train=True, download=True,
+            root='./data', train=True, download=download,
             transform=train_transform)
         self.testset = ModMNIST(
-            root='./data', train=False, download=True,
+            root='./data', train=False, download=download,
             transform=test_transform)
 
         self.split_dataset(tasks, args.replay_frac)
@@ -104,7 +105,8 @@ class RotatedMNISTHandler(MultiTaskDataHandler):
     """
     def __init__(self,
                  args,
-                 tasks: List[List[int]]) -> None:
+                 tasks: List[List[int]],
+                 download: bool = False) -> None:
         """
         Download dataset and define transforms
         Args:
@@ -118,10 +120,10 @@ class RotatedMNISTHandler(MultiTaskDataHandler):
 
         train_transform, test_transform = self.get_trasforms(args.epochs)
         self.trainset = ModMNIST(
-            root='./data', train=True, download=True,
+            root='./data', train=True, download=download,
             transform=train_transform)
         self.testset = ModMNIST(
-            root='./data', train=False, download=True,
+            root='./data', train=False, download=download,
             transform=test_transform)
 
         tr_lab, te_lab = self.split_dataset(tasks, args.replay_frac)
@@ -145,7 +147,8 @@ class PermutedMNISTHandler(MultiTaskDataHandler):
     """
     def __init__(self,
                  args,
-                 tasks: List[List[int]]) -> None:
+                 tasks: List[List[int]],
+                 download: bool = False) -> None:
         """
         Download dataset and define transforms
         Args:
@@ -157,10 +160,10 @@ class PermutedMNISTHandler(MultiTaskDataHandler):
         """
         train_transform, test_transform = self.get_trasforms(args.epochs)
         self.trainset = ModMNIST(
-            root='./data', train=True, download=True,
+            root='./data', train=True, download=download,
             transform=train_transform)
         self.testset = ModMNIST(
-            root='./data', train=False, download=True,
+            root='./data', train=False, download=download,
             transform=test_transform)
 
         tr_lab, te_lab = self.split_dataset(tasks, args.replay_frac)

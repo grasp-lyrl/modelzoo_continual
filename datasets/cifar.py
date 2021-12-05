@@ -95,7 +95,8 @@ class Cifar100Handler(CifarHandler):
     """
     def __init__(self,
                  args,
-                 tasks: List[List[int]]) -> None:
+                 tasks: List[List[int]],
+                 download: bool = False) -> None:
         """
         Download CIFAR100 and prepare requested config of CIFAR100
         Args:
@@ -109,10 +110,10 @@ class Cifar100Handler(CifarHandler):
 
         train_transform, test_transform = self.get_transforms(args.epochs)
         self.trainset = torchvision.datasets.CIFAR100(
-            root='./data', train=True, download=True,
+            root='./data', train=True, download=download,
             transform=train_transform)
         self.testset = torchvision.datasets.CIFAR100(
-            root='./data', train=False, download=True,
+            root='./data', train=True, download=download,
             transform=test_transform)
 
         self.split_dataset(tasks, args.replay_frac)
@@ -125,7 +126,8 @@ class Cifar10Handler(CifarHandler):
     """
     def __init__(self,
                  args,
-                 tasks: List[List[int]]) -> None:
+                 tasks: List[List[int]],
+                 download: bool = False) -> None:
         """
         Download dataset and define transforms
         Args:
@@ -138,10 +140,10 @@ class Cifar10Handler(CifarHandler):
         train_transform, test_transform = self.get_trasforms(args.epochs)
 
         self.trainset = torchvision.datasets.CIFAR10(
-            root='./data', train=True, download=True,
+            root='./data', train=True, download=download,
             transform=train_transform)
         self.testset = torchvision.datasets.CIFAR10(
-            root='./data', train=False, download=True,
+            root='./data', train=False, download=download,
             transform=test_transform)
 
         self.split_dataset(tasks, args.replay_frac)
