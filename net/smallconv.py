@@ -14,9 +14,13 @@ class SmallConv(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(avg_pool)
 
+
+        self.linsize = 320
+        if channels == 1:
+            self.linsize = 80
         lin_layers = []
         for task in range(num_task):
-            lin_layers.append(nn.Linear(320, num_cls))
+            lin_layers.append(nn.Linear(self.linsize, num_cls))
 
         self.fc = nn.ModuleList(lin_layers)
 
@@ -34,7 +38,7 @@ class SmallConv(nn.Module):
 
         x = self.conv3(x)
         x = self.maxpool(self.relu(self.bn3(x)))
-        x = x.view(-1, 320)
+        x = x.view(-1, self.linsize)
 
         logits = self.fc[0](x) * 0
 

@@ -44,7 +44,7 @@ class MultiHead():
 
         # Get dataset
         dataclass = fetch_dataclass(data_conf['dataset'])
-        dataset = dataclass(args, data_conf['tasks'])
+        dataset = dataclass(args, data_conf['tasks'], limited_replay=True)
         self.train_loader = dataset.get_data_loader(hp["batch"], 4, train=True)
 
         test_loaders = []
@@ -59,7 +59,7 @@ class MultiHead():
 
         # Logger
         self.logger = Logger(test_loaders, alltrain_loaders,
-                             num_tasks, num_classes, args, False)
+                             num_tasks, num_classes, args)
 
         # Loss and Optimizer
         self.scaler = amp.GradScaler(enabled=args.fp16)
@@ -86,7 +86,9 @@ class MultiHead():
             train_met = run_epoch(self.net, self.args, self.optimizer,
                                   self.train_loader, self.lr_scheduler,
                                   self.scaler)
-            if epoch % log_interval == 0 or epoch == self.args.epochs - 1:
+            if epoch == self.args.epochs - 1:
+                self.logger.log_metrics(self.net, train_met, epoch, True)
+            elif epoch % log_interval == 0:
                 self.logger.log_metrics(self.net, train_met, epoch)
             else:
                 self.logger.log_train(self.net, train_met, epoch)

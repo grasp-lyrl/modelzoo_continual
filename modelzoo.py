@@ -3,6 +3,8 @@
 Implementation of the Model Zoo for continual learning
 """
 import argparse
+import logging
+import json
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,6 +27,9 @@ class ModelZoo():
           - hp_conf:   Hyper-parameter configuration
         """
         # Initialize wts / task details
+        fname = args.data_config.split("/")[-1][:-5] + "_" + args.hp_config.split("/")[-1][:-5]
+        logging.basicConfig(filename=fname + ".log", level=logging.DEBUG)
+        logging.info(str(args))
         self.tasks_info = data_conf['tasks']
         self.num_tasks = len(self.tasks_info)
         self.args = args
@@ -33,6 +38,7 @@ class ModelZoo():
         self.dataclass = fetch_dataclass(data_conf['dataset'])
         self.wts = np.array([1.0 for i in range(self.num_tasks)])
         self.learner_task_idx = []
+        self.rng = np.random.default_rng(seed=100)
 
         # Prediction of individual models
         self.tr_preds = {}
@@ -68,19 +74,13 @@ class ModelZoo():
         params:
           - rounds: Number of learners added to Zoo
         """
-        # Randomize here so that every iteration has a different set of tasks
-        # The random seed is fixed in 'train_model' in order to ensure that the
-        # same dataset is sampled in every round.
-        # TODO: Fix the random seed for reproducible
-        np.random.seed(seed=None)
-
         # Number of tasks trained in the learner
         numsubtasks = min(self.args.tasks_per_round, rounds + 1)
         pr = self.wts[:rounds] / np.sum(self.wts[:rounds])
         if rounds != 0:
-            learner_task_idx = np.random.choice(rounds,
-                                                numsubtasks - 1,
-                                                replace=False, p=pr)
+            learner_task_idx = self.rng.choice(rounds,
+                                               numsubtasks - 1,
+                                               replace=False, p=pr)
         else:
             learner_task_idx = np.array([])
 
@@ -97,7 +97,10 @@ class ModelZoo():
         self.learner_task_idx = learner_task_idx
 
         learner_conf = deepcopy(self.data_conf)
-        learner_conf["tasks"] = deepcopy(learner_task_info)
+        learner_conf['tasks'] = deepcopy(learner_task_info)
+
+        print("\n====== Round %d ======" % (rounds + 1))
+        print("Sampled tasks: %s" % (str(learner_task_idx)))
         return learner_conf
 
     def update_wts(self, losses):
@@ -123,16 +126,23 @@ class ModelZoo():
         """
         tr_ret = self.evaluate_preds(self.tr_preds, True)
         te_ret = self.evaluate_preds(self.te_preds, False)
+        rnd = lambda x: list(np.round(x, 3))
         info = {
-            "round": rounds,
-            "TrainLoss": tr_ret['Loss'],
-            "TrainAcc": tr_ret['Accuracy'],
-            "TestLoss": te_ret['Loss'],
-            "TestAcc": te_ret['Accuracy'],
-            "last_learner_tasks": list(self.learner_task_idx),
-            "last_learner_weights": list(self.wts)
+            'round': rounds,
+            'TrainLoss': rnd(tr_ret['Loss']),
+            'TrainAcc': rnd(tr_ret['Accuracy']),
+            'TestLoss': rnd(te_ret['Loss']),
+            'TestAcc': rnd(te_ret['Accuracy']),
+            'last_learner_tasks': list(self.learner_task_idx),
+            'last_learner_weights': rnd(self.wts)
         }
-        print(info)
+
+        logging.info(str((info)))
+
+        avg_acc = np.mean(info['TrainAcc'][:rounds]) if rounds > 0 else 0.0
+        allacc = str(list(np.round(info['TrainAcc'][:rounds], 2)))
+        print("Average accuracy of all seen tasks: %.2f" % (avg_acc))
+        print("Individual accuracies of all seen tasks:\n%s" % (allacc))
         return tr_ret['Loss']
 
     def fetch_predictions(self, net, l_task_info, tr_flag=False):
@@ -200,17 +210,19 @@ class ModelZoo():
             acc = 0
             loss = 0
 
-            # The ensemble averaging occurs below. If model has no prediction,
-            # output uniform probabilities over the classes
+            # The ensemble averaging occurs below. If model has no 
+            # prediction, output uniform probabilities over the classes
             if len(preds[task_id]) == 0:
-                numpts = len(dataloader.dataset.data)
+                numpts = len(dataloader.dataset)
                 curpred = np.ones((numpts, numcls)) / numcls
             else:
-                curpred = np.mean(preds[task_id], axis=0)
+                wts = np.ones(len(preds[task_id]))
+                wts[0] = 1 / self.args.replay_frac
+                curpred = np.average(preds[task_id], axis=0, weights=wts)
 
             for dat, target in dataloader:
                 tasks, labels = target
-                tasks = tasks.long()
+                tasks, labels = tasks.long(), labels.long()
                 batch_size = int(labels.size()[0])
 
                 if self.args.gpu:
@@ -230,9 +242,9 @@ class ModelZoo():
             all_loss.append(loss / count)
             all_acc.append(acc / count)
 
-        info = {"Loss": all_loss,
-                "Accuracy": all_acc,
-                "train": tr_flag}
+        info = {'Loss': all_loss,
+                'Accuracy': all_acc,
+                'train': tr_flag}
         return info
 
     def train(self):
@@ -248,42 +260,57 @@ class ModelZoo():
             self.update_wts(losses)
 
 
+def download_dataset(args, data_conf):
+    """
+    Download torchvision dataset. Mini-imagenet needs to be manually
+    downloaded from "https://www.kaggle.com/whitemoon/miniimagenet"
+    and placed in the fold "./data/mini_imagenet"
+    """
+    if args.dataset != "mini_imagenet":
+        tasks = data_conf['tasks']
+        dataclass = fetch_dataclass(data_conf['dataset'])
+        dataclass(args=args, tasks=tasks, download=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int,
+    parser.add_argument('--seed', type=int,
                         default=100,
                         help="Random Seed")
 
-    parser.add_argument("--tasks_per_round", type=int,
+    parser.add_argument('--tasks_per_round', type=int,
                         default=5,
                         help="Number of sub-tasks (batch-size)")
-    parser.add_argument("--epochs", type=int,
+    parser.add_argument('--epochs', type=int,
                         default=100,
                         help="Number of Epochs")
 
-    parser.add_argument("--data_config", type=str,
+    parser.add_argument('--data_config', type=str,
                         default="./config/dataset/coarse_cifar100.yaml",
                         help="Multi-task config")
-    parser.add_argument("--replay_frac", type=int,
+    parser.add_argument('--replay_frac', type=float,
                         default=1.0,
                         help="Fraction of samples used for replay")
 
-    parser.add_argument("--hp_config", type=str,
-                        default="./config/hyperparam/default.yaml",
+    parser.add_argument('--hp_config', type=str,
+                        default="./config/hyperparam/wrn.yaml",
                         help="Hyper parameter configuration")
 
     args = parser.parse_args()
     data_conf = fetch_configs(args.data_config)
     hp_conf = fetch_configs(args.hp_config)
     args.fp16 = args.gpu = torch.cuda.is_available()
-    args.model = hp_conf["model"]
-    args.dataset = data_conf["dataset"]
-    args.data = fetch_dataclass(data_conf["dataset"])
+    args.model = hp_conf['model']
+    args.dataset = data_conf['dataset']
+    args.data = fetch_dataclass(data_conf['dataset'])
 
     # Choose best implementation for functions
     # Does sacrifice exact reproducability from random seed
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
+
+    # Download dataset:
+    download_dataset(args, data_conf)
 
     # Train Model Zoo
     zoo = ModelZoo(args, data_conf, hp_conf)

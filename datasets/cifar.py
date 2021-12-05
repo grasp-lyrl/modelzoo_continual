@@ -96,6 +96,7 @@ class Cifar100Handler(CifarHandler):
     def __init__(self,
                  args,
                  tasks: List[List[int]],
+                 limited_replay: bool = False,
                  download: bool = False) -> None:
         """
         Download CIFAR100 and prepare requested config of CIFAR100
@@ -113,10 +114,12 @@ class Cifar100Handler(CifarHandler):
             root='./data', train=True, download=download,
             transform=train_transform)
         self.testset = torchvision.datasets.CIFAR100(
-            root='./data', train=True, download=download,
+            root='./data', train=False, download=download,
             transform=test_transform)
 
-        self.split_dataset(tasks, args.replay_frac)
+        replay_frac = args.replay_frac if limited_replay else 1
+        self.split_dataset(tasks, replay_frac)
+
 
 
 class Cifar10Handler(CifarHandler):
@@ -127,6 +130,7 @@ class Cifar10Handler(CifarHandler):
     def __init__(self,
                  args,
                  tasks: List[List[int]],
+                 limited_replay: bool = False,
                  download: bool = False) -> None:
         """
         Download dataset and define transforms
@@ -137,7 +141,7 @@ class Cifar10Handler(CifarHandler):
             - seed: Random seed. A Negative random seed implies that the subset
               of data points chosen is through the np.roll function
         """
-        train_transform, test_transform = self.get_trasforms(args.epochs)
+        train_transform, test_transform = self.get_transforms(args.epochs)
 
         self.trainset = torchvision.datasets.CIFAR10(
             root='./data', train=True, download=download,
@@ -146,4 +150,5 @@ class Cifar10Handler(CifarHandler):
             root='./data', train=False, download=download,
             transform=test_transform)
 
-        self.split_dataset(tasks, args.replay_frac)
+        replay_frac = args.replay_frac if limited_replay else 1
+        self.split_dataset(tasks, replay_frac)

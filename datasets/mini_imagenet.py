@@ -31,7 +31,7 @@ class CustomTensorDataset(Dataset):
 
 
 class MiniImagenetHandler(MultiTaskDataHandler):
-    def __init__(self, args, tasks):
+    def __init__(self, args, tasks, limited_replay=False):
         """
         Import mini-imagenet dataset and split it into multiple tasks with
         disjoint set of classes Implementation is based on the one provided by:
@@ -62,6 +62,7 @@ class MiniImagenetHandler(MultiTaskDataHandler):
         current_train, current_test = None, None
 
         cat = lambda x, y: np.concatenate((x, y), axis=0)
+        replay_frac = args.replay_frac if limited_replay else 1
 
         # Split dataset into multiple tasks
         for task_id, task in enumerate(tasks):
@@ -73,9 +74,9 @@ class MiniImagenetHandler(MultiTaskDataHandler):
                 class_label = all_label[class_indices]
                 split = int(0.8 * class_data.shape[0])
 
-                if task_id != len(tasks) - 1 and args.replay_frac < 0.99:
-                    samples = int(args.replay_frac * split)
-                    copies = 1 / (args.replay_frac * (len(tasks) - 1))
+                if task_id != len(tasks) - 1 and replay_frac < 0.99:
+                    samples = int(replay_frac * split)
+                    copies = 1 / (replay_frac * (len(tasks) - 1))
                     copies = max(int(copies), 1)
 
                     data_train = class_data[:samples]

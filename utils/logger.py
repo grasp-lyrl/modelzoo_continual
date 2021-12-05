@@ -1,17 +1,18 @@
 import numpy as np
+import logging
+import json
 
 from utils.run_net import evaluate
 
 
 class Logger():
     def __init__(self, test_loaders, train_loaders,
-                 num_tasks, n_cls, args, tune):
+                 num_tasks, n_cls, args):
         self.te_loaders = test_loaders
         self.tr_loaders = train_loaders
         self.gpu = args.gpu
         self.tasks = num_tasks
         self.n_cls = n_cls
-        self.tune = tune
 
     def evaluate_train(self, net):
         self.train_accs = []
@@ -19,7 +20,7 @@ class Logger():
             task_met = evaluate(net, self.tr_loaders[task], self.gpu)
             self.train_accs.append((task_met[0].item(), task_met[1].item()))
 
-    def log_metrics(self, net, train_met, ep):
+    def log_metrics(self, net, train_met, ep, stdout=False):
         """
         Log metrics and evaluation umbers
         """
@@ -36,14 +37,18 @@ class Logger():
         # Doesn't give extra wt. to a task with more samples
         test_met = test_met / len(task_accs)
 
+        rnd = lambda x: [tuple(np.round(y, 3)) for y in x]
         info = {
             "Epoch": ep+1, "TrainAcc": train_met[0],
             "TestAcc": test_met[0], "TrainLoss": train_met[1],
-            "TestLoss": test_met[1], "AllTestMetrics (loss,acc)": task_accs,
-            "AllTrainMetrics (loss,acc)": self.train_accs
+            "TestLoss": test_met[1],
+            "AllTestMetrics (acc,loss)": rnd(task_accs),
+            "AllTrainMetrics (acc,loss)": rnd(self.train_accs)
         }
-        if not self.tune:
-            print(info)
+        logging.info(str(info))
+        if stdout:
+            taskacc = str(list(np.round(np.array(task_accs)[:, 0], 2)))
+            print("Added learner with test accuracies: %s:" % taskacc)
 
         return test_met[0], test_met[1]
 
@@ -55,4 +60,4 @@ class Logger():
             "Epoch": ep+1, "TrainAcc": train_met[0],
             "TrainLoss": train_met[1]
         }
-        print(info)
+        logging.info(json.dumps(info))
