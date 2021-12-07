@@ -4,7 +4,7 @@ Implementation of [Model Zoo: A Growing "Brain" That Learns Continually](https:/
 
 
 <p float="center">
-  <img src="./ssets/modelzoo.png" height="300" hspace="4"/>
+  <img src="./assets/modelzoo.png" height="300" hspace="4"/>
   <img src="./assets/fwd_bwd_transfer.png" height="300" hspace="4"/>
 </p>
 Model Zoo splits the capacity of the model to mitigate task-competition and 
