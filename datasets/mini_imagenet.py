@@ -33,12 +33,20 @@ class CustomTensorDataset(Dataset):
 class MiniImagenetHandler(MultiTaskDataHandler):
     def __init__(self, args, tasks, limited_replay=False):
         """
+        Download torchvision dataset. Mini-imagenet needs to be manually
+        downloaded from "https://www.kaggle.com/whitemoon/miniimagenet".
+        The 3 pickle files must be placed in the folder "./data/mini_imagenet"
+
         Import mini-imagenet dataset and split it into multiple tasks with
-        disjoint set of classes Implementation is based on the one provided by:
+        disjoint set of classes.
+
+        Implementation is based on the one provided by:
             Aljundi, Rahaf, et al. "Online continual learning with maximally
             interfered retrieval." arXiv preprint arXiv:1908.04742 (2019).
-        :param args: Arguments for model/data configuration
-        :return: Train, test and validation data loaders
+        Args:
+            -args:  Arguments for model/data configuration
+            -tasks: Tasks to sample
+            -limited_replay: Modify datasets to have limited replay for older tasks
         """
         self.tasks = tasks
 
@@ -58,18 +66,21 @@ class MiniImagenetHandler(MultiTaskDataHandler):
         all_data = main_data.reshape((60000, 84, 84, 3))
         all_label = np.array([[i] * 600 for i in range(100)]).flatten()
 
+        # Split the merged dataset into multiple tasks
         train_ds, test_ds = [], []
         current_train, current_test = None, None
 
-        cat = lambda x, y: np.concatenate((x, y), axis=0)
+        def cat(x, y):
+            return np.concatenate((x, y), axis=0)
+
         replay_frac = args.replay_frac if limited_replay else 1
 
-        # Split dataset into multiple tasks
         for task_id, task in enumerate(tasks):
             current_train, current_test = None, None
             for label in task:
                 class_indices = np.argwhere(all_label == label).reshape(-1)
 
+                # 80% of data in trainset and 20% in test set
                 class_data = all_data[class_indices]
                 class_label = all_label[class_indices]
                 split = int(0.8 * class_data.shape[0])
@@ -103,7 +114,7 @@ class MiniImagenetHandler(MultiTaskDataHandler):
             train_ds += [current_train]
             test_ds += [current_test]
 
-        # Change labels to have label and task-id
+        # Change labels to the form (task_id, label)
         train_labels, test_labels = [], []
         train_data, test_data = [], []
 

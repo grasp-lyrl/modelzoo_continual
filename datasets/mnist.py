@@ -1,3 +1,7 @@
+"""
+MNIST based datasets are not useful benchamrks if the task identity
+is known at both train and test times.
+"""
 from typing import List
 
 import numpy as np
@@ -132,7 +136,7 @@ class RotatedMNISTHandler(MultiTaskDataHandler):
         replay_frac = args.replay_frac if limited_replay else 1
         tr_lab, te_lab = self.split_dataset(tasks, replay_frac)
 
-        # Rotate images for each of the tasks based on task_id
+        # Rotate images for each of the tasks based on task_id.
         for t_id in range(len(tasks)):
             ang = (tasks[t_id][0] // 10) * 10
 

@@ -3,7 +3,11 @@ import torch
 
 
 class SmallConv(nn.Module):
-    def __init__(self, num_task=1, num_cls=10, channels=3, avg_pool=2):
+    """
+    Small convolution network with no residual connections
+    """
+    def __init__(self, num_task=1, num_cls=10, channels=3,
+                 avg_pool=2, lin_size=320):
         super(SmallConv, self).__init__()
         self.conv1 = nn.Conv2d(channels, 80, kernel_size=3, bias=False)
         self.conv2 = nn.Conv2d(80, 80, kernel_size=3)
@@ -14,10 +18,8 @@ class SmallConv(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(avg_pool)
 
+        self.linsize = lin_size
 
-        self.linsize = 320
-        if channels == 1:
-            self.linsize = 80
         lin_layers = []
         for task in range(num_task):
             lin_layers.append(nn.Linear(self.linsize, num_cls))

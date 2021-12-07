@@ -22,8 +22,10 @@ class Logger():
 
     def log_metrics(self, net, train_met, ep, stdout=False):
         """
-        Log metrics and evaluation umbers
+        Compute and loss train/test metrics. Slightly expensive
+        so must be done infrequently during training (once every 10 epochs)
         """
+        # Compute train/test metrics of learner.
         test_met = np.array([0.0, 0.0])
         self.evaluate_train(net)
 
@@ -37,7 +39,9 @@ class Logger():
         # Doesn't give extra wt. to a task with more samples
         test_met = test_met / len(task_accs)
 
-        rnd = lambda x: [tuple(np.round(y, 3)) for y in x]
+        def rnd(x):
+            return [tuple(np.round(y, 3)) for y in x]
+
         info = {
             "Epoch": ep+1, "TrainAcc": train_met[0],
             "TestAcc": test_met[0], "TrainLoss": train_met[1],
@@ -54,7 +58,7 @@ class Logger():
 
     def log_train(self, net, train_met, ep):
         """
-        Log metrics and evaluation umbers
+        Log metrics obtained from training single epoch
         """
         info = {
             "Epoch": ep+1, "TrainAcc": train_met[0],

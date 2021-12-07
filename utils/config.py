@@ -3,7 +3,9 @@ import yaml
 
 
 def fetch_configs(fname):
-    # Get config
+    """
+    Load yaml config file
+    """
     with open(os.path.join(fname), 'r') as myfile:
-        data = yaml.load(myfile, Loader=yaml.FullLoader)
+        data = yaml.load(myfile, Loader=yaml.SafeLoader)
     return data

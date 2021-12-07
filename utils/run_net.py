@@ -6,7 +6,7 @@ import torch.cuda.amp as amp
 
 def evaluate(net, dataloader, gpu):
     """
-    Evaluate the network
+    Evaluate the network on a single task and return (acc, loss)
     """
     acc = 0.0
     loss = 0.0
@@ -41,7 +41,7 @@ def evaluate(net, dataloader, gpu):
 def run_epoch(net, args, optimizer, train_loader,
               lr_scheduler, scaler):
     """
-    Run one epoch of training
+    Train the model for one epoch
     """
     train_loss = 0.0
     train_acc = 0.0

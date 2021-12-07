@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from typing import List
-from torch import Tensor, Type
+from torch import Tensor
 
 
 class BasicBlock(nn.Module):
@@ -19,7 +19,6 @@ class BasicBlock(nn.Module):
                  stride: int,
                  drop_rate: float = 0.0) -> None:
         nn.Module.__init__(self)
-        # super(BasicBlock, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3,
@@ -54,7 +53,7 @@ class NetworkBlock(nn.Module):
                  block: BasicBlock,
                  stride: int,
                  drop_rate: float = 0.0) -> None:
-        super(NetworkBlock, self).__init__()
+        nn.Module.__init__(self)
         self.layer = self._make_layer(block, in_planes, out_planes,
                                       nb_layers, stride, drop_rate)
 
@@ -78,7 +77,7 @@ class NetworkBlock(nn.Module):
 class WideResNetMultiTask(nn.Module):
     """
     Wide-Resnet (https://arxiv.org/abs/1605.07146) for multiple tasks.
-    This implementation assumes all tasks have the same number of classes. 
+    This implementation assumes all tasks have the same number of classes.
     See WideResNetMultiTask_v2 if you want to have multiple classes
     """
     def __init__(self,
@@ -86,7 +85,7 @@ class WideResNetMultiTask(nn.Module):
                  num_task: int,
                  num_cls: int,
                  widen_factor: int = 1,
-                 drop_rate:float = 0.0,
+                 drop_rate: float = 0.0,
                  inp_channels: int = 3) -> None:
         """
         Args:
@@ -168,7 +167,8 @@ class WideResNetMultiTask_v2(nn.Module):
     """
     This function is not used in the code but included for completeness.
     Multi-task implementation of WRN where all tasks don't have the same number
-    of classes
+    of classes. Datasets that we evaluated on did not make use variable number
+    of classes per task
     """
     def __init__(self,
                  depth: int,
@@ -178,7 +178,7 @@ class WideResNetMultiTask_v2(nn.Module):
                  inp_channels: int = 3,
                  use_gpu: bool = True) -> None:
         """
-        Args: 
+        Args:
             - depth: Depth of WRN
             - task_outputs: A list containing number of outputs for each tasks
             - widen_factor: The scaling factor for the number of channels
@@ -206,8 +206,8 @@ class WideResNetMultiTask_v2(nn.Module):
         for t_id, out_size in enumerate(task_outputs):
             self.pad_map[t_id] = maxval - out_size
 
-        self.conv1 = nn.Conv2d(inp_channels, nChannels[0], kernel_size=3, stride=1,
-                               padding=1, bias=False)
+        self.conv1 = nn.Conv2d(inp_channels, nChannels[0], kernel_size=3,
+                               stride=1, padding=1, bias=False)
         self.block1 = NetworkBlock(n, nChannels[0],
                                    nChannels[1], block, 1, drop_rate)
         self.block2 = NetworkBlock(n, nChannels[1],
@@ -252,7 +252,6 @@ class WideResNetMultiTask_v2(nn.Module):
 
         # Fill logits with zeros
         logits = self.fc[self.max_id](out) * 0
-        max_shape = logits.size()
 
         # Fill out the logits for the entire batch
         for idx, lin in enumerate(self.fc):
@@ -263,7 +262,6 @@ class WideResNetMultiTask_v2(nn.Module):
 
             task_out = torch.index_select(out, dim=0, index=task_idx)
             task_logit = lin(task_out)
-            shape = task_logit.size()
             if self.pad_map[idx] > 0:
                 pad = torch.zeros((len(task_logit), self.pad_map[idx]))
                 if self.gpu:

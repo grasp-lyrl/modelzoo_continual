@@ -25,8 +25,8 @@ class MultiHead():
 
         Params:
           - args:      Arguments from arg parse
-          - hp:        JSON config file for hyper-parameters
-          - data_conf: JSON config of dataset
+          - hp:        dict of hyper-parameters config
+          - data_conf: dcit of dataset config
         """
         self.args = args
         self.hp = hp
@@ -38,8 +38,7 @@ class MultiHead():
         torch.manual_seed(abs(args.seed))
         np.random.seed(abs(args.seed))
 
-        # Network
-        # Currently code assumes all tasks have same number of classes
+        # Initialize Network. code assumes all tasks have same no. of classes
         self.net = fetch_net(args, num_tasks, num_classes, hp['dropout'])
 
         # Get dataset

@@ -4,7 +4,6 @@ Implementation of the Model Zoo for continual learning
 """
 import argparse
 import logging
-import json
 import numpy as np
 import torch
 import torch.nn as nn
@@ -23,13 +22,15 @@ class ModelZoo():
 
         params:
           - args:      Argparse arguments
-          - data_conf: JSON of data configuration
-          - hp_conf:   Hyper-parameter configuration
+          - data_conf: dict of data configuration
+          - hp_conf:   dict of hyper-parameter configuration
         """
-        # Initialize wts / task details
-        fname = args.data_config.split("/")[-1][:-5] + "_" + args.hp_config.split("/")[-1][:-5]
+        # Create log file
+        fname = args.data_config.split("/")[-2][:-5] + "_" + args.hp_config.split("/")[-1][:-5]
         logging.basicConfig(filename=fname + ".log", level=logging.DEBUG)
         logging.info(str(args))
+
+        # Store config variables
         self.tasks_info = data_conf['tasks']
         self.num_tasks = len(self.tasks_info)
         self.args = args
@@ -38,9 +39,11 @@ class ModelZoo():
         self.dataclass = fetch_dataclass(data_conf['dataset'])
         self.wts = np.array([1.0 for i in range(self.num_tasks)])
         self.learner_task_idx = []
+
+        # Random generator for sampling tasks in every boosting iteration
         self.rng = np.random.default_rng(seed=100)
 
-        # Prediction of individual models
+        # Store train and test predictions of individual models
         self.tr_preds = {}
         self.te_preds = {}
         for t_id in range(self.num_tasks):
@@ -52,30 +55,29 @@ class ModelZoo():
         Add a learner to the model-Zoo
 
         params:
-          - learner_conf: List[List[int] indicating Subset of tasks to train on
+          - learner_conf: dict describing Subset of tasks to train with
         """
+        # Train a single "multi-head" learner and add it to the Model Zoo
         model = MultiHead(self.args, self.hp_conf, learner_conf)
         net, trainmets = model.train(log_interval=200)
 
-        # Store predictions of learner on train/test dataset (so that we can
-        # discard the learner and save memory)
-        tr_ret = self.fetch_predictions(net, learner_conf['tasks'], True)
-        te_ret = self.fetch_predictions(net, learner_conf['tasks'], False)
+        # Store all predictions of learner on train/test dataset 
+        # This allows us to discard the learners weights
+        tr_ret = self.fetch_outputs(net, learner_conf['tasks'], True)
+        te_ret = self.fetch_outputs(net, learner_conf['tasks'], False)
         for idx, t_id in enumerate(self.learner_task_idx):
             self.tr_preds[t_id].append(tr_ret[idx])
             self.te_preds[t_id].append(te_ret[idx])
 
     def sample_tasks(self, rounds: int):
         """
-        Sample tasks to be used to train the next learner. Sampling changes
-        based on if the Model Zoo is for continual learning or regular
-        multi-task learning.
+        Sample tasks to be used to train the next learner.
 
         params:
           - rounds: Number of learners added to Zoo
         """
-        # Number of tasks trained in the learner
-        numsubtasks = min(self.args.tasks_per_round, rounds + 1)
+        # Sample tasks based on the training loss
+        numsubtasks = min(self.args.tasks_per_round, rounds + 0)
         pr = self.wts[:rounds] / np.sum(self.wts[:rounds])
         if rounds != 0:
             learner_task_idx = self.rng.choice(rounds,
@@ -84,8 +86,8 @@ class ModelZoo():
         else:
             learner_task_idx = np.array([])
 
-        # Manually add the newly seen task (although boosting-based version
-        # automatically selects this task due to the the very large loss)
+        # Manually add the newly seen task (boosting should
+        # automatically select this task due to the the very large loss)
         learner_task_idx = np.append(learner_task_idx, int(rounds))
         learner_task_idx = np.array(learner_task_idx, dtype=np.int32)
 
@@ -103,9 +105,11 @@ class ModelZoo():
         print("Sampled tasks: %s" % (str(learner_task_idx)))
         return learner_conf
 
-    def update_wts(self, losses):
+    def update_task_wts(self, losses):
         """
-        Update the sampling weights based on the losses
+        Update the sampling weights based on the losses. self.wts should
+        ideally be based on the transfer exponent $\rho$. We however, use
+        the (noramlized) training loss like in boosting
 
         params:
           - losses: List of training losses on various tasks
@@ -119,14 +123,18 @@ class ModelZoo():
 
     def evaluate(self, rounds: int):
         """
-        Evaluate on the train and test sets and log the results
+        Evaluate the entire Model Zoo (combination of all learners)
+        on the train and test sets and log the results
 
         params:
           - rounds: Number of learners added to Zoo
         """
         tr_ret = self.evaluate_preds(self.tr_preds, True)
         te_ret = self.evaluate_preds(self.te_preds, False)
-        rnd = lambda x: list(np.round(x, 3))
+
+        def rnd(x):
+            return list(np.round(x, 3))
+
         info = {
             'round': rounds,
             'TrainLoss': rnd(tr_ret['Loss']),
@@ -145,14 +153,16 @@ class ModelZoo():
         print("Individual accuracies of all seen tasks:\n%s" % (allacc))
         return tr_ret['Loss']
 
-    def fetch_predictions(self, net, l_task_info, tr_flag=False):
+    def fetch_outputs(self, net, l_task_info, tr_flag=False):
         """
-        Store the set of predictions for all tasks using the newly trained
-        learner. Store the predictions so that they can be used later for
-        ensembling.
+        Compute the outputs of newly trained learner on the tasks it
+        was trained on. The predictions of different learners are not
+        combined so that they can be used to compute the error of the
+        Model Zoo at any stage. This allows us to discard the weights
+        of the individual learner.
 
         params:
-          - net: Trained neural net
+          - net:         Neural net of newest learner
           - l_task_info: Description of subset of tasks that neural net was
                          trained on
           - tr_flag:     Determines whether to use train/test set
@@ -190,8 +200,8 @@ class ModelZoo():
 
     def evaluate_preds(self, preds, tr_flag):
         """
-        Use the set of predictions from all learners to give the result of the
-        final ensemble.
+        Use the set of predictions from all learners to compute the error
+        and the loss of the entire Model Zoo
         """
         dataset = self.dataclass(args=self.args, tasks=self.tasks_info)
         criterion = nn.NLLLoss()
@@ -205,21 +215,28 @@ class ModelZoo():
         all_loss = []
         all_acc = []
 
+        # Iterate over tasks and compute error/loss of Model Zoo on each task
         for task_id, dataloader in enumerate(test_loaders):
             count = 0
             acc = 0
             loss = 0
 
-            # The ensemble averaging occurs below. If model has no 
-            # prediction, output uniform probabilities over the classes
+            # Compute the outputs of the entire Model Zoo by ensemble
+            # averaging of the predictions of all learners
             if len(preds[task_id]) == 0:
+                # If model has no prediction, output uniform probabilities
                 numpts = len(dataloader.dataset)
                 curpred = np.ones((numpts, numcls)) / numcls
             else:
+                # If limited replay was, used apply a weighted ensemble. The
+                # rationale is that we increase the weight of a learner if it
+                # trained on more samples. This is true for the first learner
+                # trained on a task (wts[0] is hence has higher weight)
                 wts = np.ones(len(preds[task_id]))
                 wts[0] = 1 / self.args.replay_frac
                 curpred = np.average(preds[task_id], axis=0, weights=wts)
 
+            # Compute error/loss using outputs of Model Zoo (curpred)
             for dat, target in dataloader:
                 tasks, labels = target
                 tasks, labels = tasks.long(), labels.long()
@@ -256,15 +273,15 @@ class ModelZoo():
 
             learner_conf = self.sample_tasks(rounds)
             self.add_learner(learner_conf)
-            losses = self.evaluate(rounds + 1)
-            self.update_wts(losses)
+            losses = self.evaluate(rounds + 0)
+            self.update_task_wts(losses)
 
 
 def download_dataset(args, data_conf):
     """
     Download torchvision dataset. Mini-imagenet needs to be manually
-    downloaded from "https://www.kaggle.com/whitemoon/miniimagenet"
-    and placed in the fold "./data/mini_imagenet"
+    downloaded from "https://www.kaggle.com/whitemoon/miniimagenet".
+    The 3 pickle files must be placed in the folder "./data/mini_imagenet"
     """
     if args.dataset != "mini_imagenet":
         tasks = data_conf['tasks']
@@ -309,7 +326,6 @@ def main():
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
 
-    # Download dataset:
     download_dataset(args, data_conf)
 
     # Train Model Zoo

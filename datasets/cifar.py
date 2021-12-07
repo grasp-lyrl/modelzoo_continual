@@ -28,6 +28,7 @@ class CifarHandler(MultiTaskDataHandler):
             transforms.ToTensor(),
             transforms.Normalize(mean=mean_norm, std=std_norm)])
 
+        # If training for just 1 epoch, then augmentations are not useful
         if epochs == 1:
             train_transform = vanilla_transform
         else:
@@ -52,10 +53,13 @@ class CifarHandler(MultiTaskDataHandler):
                 task_te_ind = np.where(np.isin(self.testset.targets,
                                                [lab]))[0]
 
-                # Reduce replay samples except for last task (which is
-                # the new task)
-                # Duplicate older task samples to have equal number of
-                # samples as a new task
+                # This only applies if limited replay is to be used:
+                #   Reduce replay samples except for the last task which is
+                #   allowed to use all available samples. Duplicate older task
+                #   samples so that total number of samples of the new task is
+                #   close to the number of samples of all other tasks. Every
+                #   mini-batch has approximately half the samples from the
+                #   new task and half the samples from all other tasks
                 if replay_frac < 0.99 and task_id != len(tasks) - 1:
                     samples = int(replay_frac * len(task_tr_ind))
                     copies = 1.0 / ((len(tasks) - 1) * replay_frac)
@@ -66,8 +70,9 @@ class CifarHandler(MultiTaskDataHandler):
 
                 tr_ind.append(task_tr_ind)
                 te_ind.append(task_te_ind)
-                curlab = (task_id, lab_id)
 
+                # Change labels to (task_id, label)
+                curlab = (task_id, lab_id)
                 tr_vals = [curlab for _ in range(len(task_tr_ind))]
                 te_vals = [curlab for _ in range(len(task_te_ind))]
 
@@ -119,7 +124,6 @@ class Cifar100Handler(CifarHandler):
 
         replay_frac = args.replay_frac if limited_replay else 1
         self.split_dataset(tasks, replay_frac)
-
 
 
 class Cifar10Handler(CifarHandler):
