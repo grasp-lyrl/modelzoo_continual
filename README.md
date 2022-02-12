@@ -24,7 +24,7 @@ copy the files to `./data/mini_imagenet/`
 
 ## Usage
 
-The two key files is `modelzoo.py`. The `-h`
+The file `modelzoo.py` is used to run the Zoo. The `-h`
 flag can be used to list the argparse arguments. For example to run Model Zoo:
 
 ```bash
@@ -33,7 +33,6 @@ python modelzoo.py --data_config ./config/dataset/coarse_cifar100.yaml \
                    --epochs 100 --replay_frac 1.0
 ```
 
-To run the continual learning variant of the Model Zoo, add the `--continual` flag. The tasks are presented sequentially with the order prescribed by the data config file.
 
 ## Directory Structure
 
