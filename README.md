@@ -1,6 +1,6 @@
 # Model Zoo
 
-Implementation of [Model Zoo: A Growing "Brain" That Learns Continually](https://arxiv.org/abs/2106.03027)
+Implementation of [Model Zoo: A Growing "Brain" That Learns Continually](https://arxiv.org/abs/2106.03027) (ICLR 22)
 
 
 <p float="center">
