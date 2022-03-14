@@ -58,3 +58,13 @@ python modelzoo.py --data_config ./config/dataset/coarse_cifar100.yaml \
     └── run_net.py
 ```
 
+If you find this code useful, consider citing
+
+    @inproceedings{
+        ramesh2022model,
+        title={Model Zoo: A Growing Brain That Learns Continually},
+        author={Rahul Ramesh and Pratik Chaudhari},
+        booktitle={International Conference on Learning Representations},
+        year={2022},
+        url={https://openreview.net/forum?id=WfvgGBcgbE7}
+    }
