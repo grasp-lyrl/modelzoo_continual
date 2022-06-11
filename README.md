@@ -7,8 +7,7 @@ Implementation of [Model Zoo: A Growing "Brain" That Learns Continually](https:/
   <img src="./assets/modelzoo.png" height="300" hspace="4"/>
   <img src="./assets/fwd_bwd_transfer.png" height="300" hspace="4"/>
 </p>
-Model Zoo tackles a sequence of tasks and leverages past tasks to do well on new tasks, and use 
-new tasks to improve upon past tasks. Model Zoo explicitly splits the capacity of the model to mitigate task-competition and better exploit the relationship between of tasks. It shows improvements as large as 10-25% when evaluated in different formulations of continual learning.  
+Model Zoo tackles a sequence of tasks, and leverages past tasks to do well on new tasks, and new tasks to improve upon past tasks. Model Zoo explicitly splits the capacity of the model to mitigate task-competition and to exploit the relatedness of different tasks. It shows improvements as large as 10-25% when evaluated on different formulations of continual learning.  
 
 ## Setup:
 
