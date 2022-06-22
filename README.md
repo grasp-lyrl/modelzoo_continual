@@ -1,6 +1,6 @@
 # Model Zoo
 
-Implementation of [Model Zoo: A Growing "Brain" That Learns Continually](https://arxiv.org/abs/2106.03027) (ICLR 22). Jump into [this notebook](https://github.com/rahul13ramesh/modelzoo_continual/blob/main/modelzoo_minimal.ipynb) to get started on a simplified version of Model Zoo.
+Implementation of [Model Zoo: A Growing "Brain" That Learns Continually](https://arxiv.org/abs/2106.03027) (ICLR 22). Jump into [this notebook](https://github.com/rahul13ramesh/modelzoo_continual/blob/main/modelzoo_minimal.ipynb) (which [Ashwin](https://laknath1996.github.io/) and I coded up) to get started on a simplified version of Model Zoo.
 
 
 <p float="center">
